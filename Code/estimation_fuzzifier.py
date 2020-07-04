@@ -5,6 +5,11 @@ from sklearn.datasets import make_blobs
 from sklearn.preprocessing import minmax_scale
 from scipy.stats import kurtosis, skew
 from matplotlib import pyplot as plt
+import pandas as pd
+
+#CONSTANTS
+NUM_STATS = 19
+NUM_INDICES = 10
 
 #Compute Meta-Features ==============================================================================================
 def computeDescriptors(vector):
@@ -94,8 +99,10 @@ def computeInnerDistances(vectors):
 def XieBeniIndex(data, membership_matrix, centers, m): #(Xie and Beni, 1991) and modified by (Pal and Bezdek, 1995)
 
     N = data.shape[0]
-    xb_index = computeObjetiveFunction(data, membership_matrix, centers, m) / ( N * computeInnerDistances(centers).min() )
-
+    min_dist_centers = computeInnerDistances(centers).min()
+    xb_index = np.inf
+    if(min_dist_centers > 0):
+        xb_index = computeObjetiveFunction(data, membership_matrix, centers, m) / ( N * min_dist_centers )
     return xb_index
 
 def BensaidIndex(data, membership_matrix, centers): #(Bensaid et. al. 1996)
@@ -124,7 +131,10 @@ def KwonIndex(data, membership_matrix, centers): #(Kwon et al, 1996)
     center_data = data.mean(axis = 0)
     mean_dist_to_center_data = ( (centers - center_data)**2 ).sum() / c
 
-    kwon_index = ( scaled_dist_sum + mean_dist_to_center_data ) /  computeInnerDistances(centers).min()
+    min_dist_centers = computeInnerDistances(centers).min()
+    kwon_index = np.inf
+    if( min_dist_centers > 0 ):
+        kwon_index = ( scaled_dist_sum + mean_dist_to_center_data ) /  min_dist_centers
 
     return kwon_index
 
@@ -348,7 +358,7 @@ def maxTheoreticalFuzzifier(data):
         vector = np.array([std_data[j]])
         C_x = C_x + vector.transpose().dot(vector) / ( N * (vector**2).sum() )
 
-    max_eigenvalue = max(np.linalg.eigvals(C_x))
+    max_eigenvalue = max(np.real(np.linalg.eigvals(C_x)))
     max_m = np.inf
 
     if(max_eigenvalue < 0.5):
@@ -383,7 +393,7 @@ def evaluateFuzzifier(data, c):
 
 #TEST =====================================================================================================
 
-def generateMetadatasets():
+def generateSyntheticMetadatasets():
 
     mf_density = np.array([])
     mf_distances = np.array([])
@@ -413,9 +423,9 @@ def generateMetadatasets():
             for k in range(1, 11):
                 idx = 0
                 if(k <= 3):
-                    idx = np.argwhere( metrics[k] == metrics[k].max() )[0,0]
+                    idx = np.argwhere( metrics[k] == np.nanmax(metrics[k]) )[0,0]
                 else:
-                    idx = np.argwhere( metrics[k] == metrics[k].min() )[0,0]
+                    idx = np.argwhere( metrics[k] == np.nanmin(metrics[k]) )[0,0]
                 estimate_m = np.append( estimate_m, metrics[0, idx] )
 
     mf_density = mf_density.reshape([54, mean_n_samples]) #size = 234
@@ -427,6 +437,49 @@ def generateMetadatasets():
     np.savetxt("mf_distances_simulated.csv", mf_distances, delimiter = ",", fmt="%.5f")
     np.savetxt("mf_dist_corr_simulated.csv", mf_dist_corr, delimiter = ",", fmt="%.5f")
     np.savetxt("estimate_m_simulated.csv", estimate_m, delimiter = ",", fmt="%.5f")
+
+def generateMetadatasets():
+    mf_density = np.array([])
+    mf_distances = np.array([])
+    mf_dist_corr = np.array([])
+    estimate_m = np.array([])
+
+    desc_datasets = pd.read_csv("../../Real_Datasets_OpenML/desc_datasets.csv")
+
+    mean_n_samples = floor( desc_datasets['Num_Rows'].mean() + 1 )
+
+    for i in range(desc_datasets.shape[0]):
+
+        df = pd.read_csv("../../Real_Datasets_OpenML/"+desc_datasets['Name'][i])
+        p = desc_datasets['Num_Columns'][i]
+        c = df.iloc[:,p].nunique() #Number of classes
+        X = df.iloc[:,:p].to_numpy() #Datasets without targets
+        X = minmax_scale(X)
+
+        mf_density = np.append( mf_density, metafeatures_based_on_density(X, mean_n_samples) )
+        mf_distances = np.append( mf_distances, metafeatures_based_on_distances(X) )
+        mf_dist_corr = np.append( mf_dist_corr, metafeatures_based_on_dissimilarity_correlation(X) )
+
+        metrics = evaluateFuzzifier(X, c)
+        print("%d - %d - %d"%(i, p, c))
+        for k in range(1, 11):
+            idx = 0
+            if(k <= 3):
+                idx = np.argwhere( metrics[k] == np.nanmax(metrics[k]) )[0,0]
+            else:
+                idx = np.argwhere( metrics[k] == np.nanmin(metrics[k]) )[0,0]
+            estimate_m = np.append( estimate_m, metrics[0, idx] )
+
+    size = desc_datasets.shape[0]
+    mf_density = mf_density.reshape([size, mean_n_samples])
+    mf_distances = mf_distances.reshape([size, NUM_STATS])
+    mf_dist_corr = mf_dist_corr.reshape([size, NUM_STATS])
+    estimate_m = estimate_m.reshape([size, NUM_INDICES])
+
+    np.savetxt("mf_density_real.csv", mf_density, delimiter = ",", fmt="%.5f")
+    np.savetxt("mf_distances_real.csv", mf_distances, delimiter = ",", fmt="%.5f")
+    np.savetxt("mf_dist_corr_real.csv", mf_dist_corr, delimiter = ",", fmt="%.5f")
+    np.savetxt("estimate_m_real.csv", estimate_m, delimiter = ",", fmt="%.5f")
 
 
 generateMetadatasets()
