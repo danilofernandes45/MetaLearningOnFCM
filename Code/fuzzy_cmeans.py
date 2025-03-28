@@ -125,11 +125,11 @@ def BensaidIndex(data, membership_matrix, centers): #(Bensaid et. al. 1996)
         
         sum_membership = np.sum(membership_matrix[i])
         if sum_membership == 0:
-            sum_membership = 1e-4
-            
+            sum_membership = 1e-10
+
         bs_index += sum_dist_to_centers / ( sum_dist_between_centers * sum_membership )
 
-    return bs_index
+    return min(bs_index, 1e10)
 
 def KwonIndex(data, membership_matrix, centers): #(Kwon et al, 1996)
     c = centers.shape[0]
@@ -143,7 +143,7 @@ def KwonIndex(data, membership_matrix, centers): #(Kwon et al, 1996)
     if( min_dist_centers > 0 ):
         kwon_index = ( scaled_dist_sum + mean_dist_to_center_data ) /  min_dist_centers
 
-    return kwon_index
+    return min(kwon_index, 1e10)
 
 def TangIndex(data, membership_matrix, centers): #(Tang et al, 2005)
 
@@ -153,7 +153,7 @@ def TangIndex(data, membership_matrix, centers): #(Tang et al, 2005)
 
     tang_index = ( scaled_dist_sum + 2*dist_inner_centers.sum()/(c**2-c) ) / ( dist_inner_centers.min() + 1/c )
 
-    return tang_index
+    return min(tang_index, 1e10)
 
 def FukuyamaSugenoIndex(data, membership_matrix, centers, m): #(Fukuyama and Sugeno, 1989)
 
@@ -170,7 +170,7 @@ def FukuyamaSugenoIndex(data, membership_matrix, centers, m): #(Fukuyama and Sug
             dist_centers = ( (centers[i] - mean_center)**2 ).sum()
             scaled_dist_sum += ( membership_matrix[i, j]**m ) * ( dist_data - dist_centers )
 
-    return scaled_dist_sum[0]
+    return min(scaled_dist_sum[0], 1e10)
 
 def ZahidIndex(data, membership_matrix, centers, m): #(Zahid et al, 1999)
 
