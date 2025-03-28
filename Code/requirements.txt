@@ -1,0 +1,8 @@
+numpy
+pandas
+matplotlib
+scipy
+scikit-learn
+scikit-fuzzy
+scikit-optimize
+packaging>=21.3
