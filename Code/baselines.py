@@ -21,31 +21,34 @@ def computeRRMSE(y_test, y_predicted):
     sum_squared_dif_test_mean = ( ( y_test - mean_y_test )**2 ).sum()
     return sqrt( sum_squared_dif_test_pred / sum_squared_dif_test_mean )
 
-indices_names = ["Z_Index", "PCAES_Index", "SCG_Index", "FS_Index", "XB_Index", "B_Index", "K_Index", "T_Index", "FH_Index", "AWCD_Index"]
-indices = ['Z','PCAES','SCG','FS','XB','B','K','T','FH','AWCD']
+# indices_names = ["Z_Index", "PCAES_Index", "SCG_Index", "FS_Index", "XB_Index", "B_Index", "K_Index", "T_Index", "FH_Index", "AWCD_Index"]
+# indices = ['Z','PCAES','SCG','FS','XB','B','K','T','FH','AWCD']
 
-estimate_m = pd.read_csv("../Data/Real/Metadatasets/estimate_m_real.csv")
+indices_names = ["B_Index", "FS_Index", "K_Index", "T_Index"]
+indices = ['B','FS','K','T']
+
+estimate_m = pd.read_csv("../Data/Synthetic/Metadatasets/bayes_opt_m_simulated.csv")
 
 num_datasets = estimate_m.shape[0]
 
-mean_mape = np.zeros([30, 10])
-mean_mrae = np.zeros([30, 10])
-mean_rrmse = np.zeros([30, 10])
+mean_mape = np.zeros([30, 4])
+mean_mrae = np.zeros([30, 4])
+mean_rrmse = np.zeros([30, 4])
 
-mode_mape = np.zeros([30, 10])
-mode_mrae = np.zeros([30, 10])
-mode_rrmse = np.zeros([30, 10])
+mode_mape = np.zeros([30, 4])
+mode_mrae = np.zeros([30, 4])
+mode_rrmse = np.zeros([30, 4])
 
-median_mape = np.zeros([30, 10])
-median_mrae = np.zeros([30, 10])
-median_rrmse = np.zeros([30, 10])
+median_mape = np.zeros([30, 4])
+median_mrae = np.zeros([30, 4])
+median_rrmse = np.zeros([30, 4])
 
 for r in range(30):#Experiment
     idx = np.arange(0, num_datasets, 1)
     np.random.seed(r)
     np.random.shuffle(idx)
 
-    for j in range(10):#Indices
+    for j in range(4):#Indices
         mean_mape_error = []
         mean_mrae_error = []
         mean_rrmse_error = []
@@ -101,14 +104,14 @@ for r in range(30):#Experiment
         median_rrmse[r, j] = np.array(median_rrmse_error).mean()
 
 
-np.savetxt("../Data/Real/Error_Datasets/average_mape_error.csv", mean_mape, delimiter = ",", fmt="%.10f")
-# np.savetxt("../Data/Error_Datasets/marjority_mape_error.csv", mode_mape, delimiter = ",", fmt="%.10f")
-np.savetxt("../Data/Real/Error_Datasets/median_mape_error.csv", median_mape, delimiter = ",", fmt="%.10f")
+np.savetxt("../Data/Synthetic/Error_Datasets/Baselines/Bayes/average_mape_error.csv", mean_mape, delimiter = ",", fmt="%.10f")
+# np.savetxt("../Data/Error_Datasets/Baselines/Bayes/marjority_mape_error.csv", mode_mape, delimiter = ",", fmt="%.10f")
+np.savetxt("../Data/Synthetic/Error_Datasets/Baselines/Bayes/median_mape_error.csv", median_mape, delimiter = ",", fmt="%.10f")
 
-np.savetxt("../Data/Real/Error_Datasets/average_mrae_error.csv", mean_mrae, delimiter = ",", fmt="%.10f")
-# np.savetxt("../Data/Error_Datasets/marjority_mrae_error.csv", mode_mrae, delimiter = ",", fmt="%.10f")
-np.savetxt("../Data/Real/Error_Datasets/median_mrae_error.csv", median_mrae, delimiter = ",", fmt="%.10f")
+# np.savetxt("../Data/Real/Error_Datasets/Baselines/Bayes/average_mrae_error.csv", mean_mrae, delimiter = ",", fmt="%.10f")
+# # np.savetxt("../Data/Error_Datasets/Baselines/Bayes/marjority_mrae_error.csv", mode_mrae, delimiter = ",", fmt="%.10f")
+# np.savetxt("../Data/Real/Error_Datasets/Baselines/Bayes/median_mrae_error.csv", median_mrae, delimiter = ",", fmt="%.10f")
 
-np.savetxt("../Data/Real/Error_Datasets/average_rrmse_error.csv", mean_rrmse, delimiter = ",", fmt="%.10f")
-# np.savetxt("../Data/Error_Datasets/marjority_rrmse_error.csv", mode_rrmse, delimiter = ",", fmt="%.10f")
-np.savetxt("../Data/Real/Error_Datasets/median_rrmse_error.csv", median_rrmse, delimiter = ",", fmt="%.10f")
+np.savetxt("../Data/Synthetic/Error_Datasets/Baselines/Bayes/average_rrmse_error.csv", mean_rrmse, delimiter = ",", fmt="%.10f")
+# np.savetxt("../Data/Error_Datasets/Baselines/Bayes/marjority_rrmse_error.csv", mode_rrmse, delimiter = ",", fmt="%.10f")
+np.savetxt("../Data/Synthetic/Error_Datasets/Baselines/Bayes/median_rrmse_error.csv", median_rrmse, delimiter = ",", fmt="%.10f")
