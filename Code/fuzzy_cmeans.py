@@ -102,7 +102,8 @@ def computeInnerDistances(vectors):
 def XieBeniIndex(data, membership_matrix, centers, m): #(Xie and Beni, 1991) and modified by (Pal and Bezdek, 1995)
 
     N = data.shape[0]
-    min_dist_centers = computeInnerDistances(centers).min()
+    dists = computeInnerDistances(centers)
+    min_dist_centers = dists[dists != 0].min()
     xb_index = np.inf
     if(min_dist_centers > 0):
         xb_index = computeObjetiveFunction(data, membership_matrix, centers, m) / ( N * min_dist_centers )
