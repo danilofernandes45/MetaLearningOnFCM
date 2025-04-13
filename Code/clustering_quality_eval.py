@@ -265,9 +265,10 @@ def computeErrorBaselinesReal():
 estimate_real_m = pd.read_csv("../Data/Real/Metadatasets/estimate_m_real.csv")
 estimate_syn_m = pd.read_csv("../Data/Synthetic/Metadatasets/estimate_m_simulated.csv")
 
+estimate_real_fs = pd.read_csv("../Data/Real/Clustering_Quality/fs_real_ground_truth.csv")
 estimate_syn_fs = pd.read_csv("../Data/Synthetic/Clustering_Quality/fs_simulated_ground_truth.csv")
 
-
 # computeGroundTruth(estimate_syn_m, getSyntheticData, "fs_simulated_ground_truth.csv")
-path = "../Data/Synthetic/Clustering_Quality/Baselines/BruteForce"
-computeErrorBaselines(estimate_syn_m, estimate_syn_fs, getSyntheticData, path)
+# path = "../Data/Synthetic/Clustering_Quality/Baselines/BruteForce"
+path = "../Data/Real/Clustering_Quality/Baselines/BruteForce"
+computeErrorBaselines(estimate_real_m, estimate_real_fs, getRealData, path)

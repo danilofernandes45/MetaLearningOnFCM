@@ -3,7 +3,7 @@ from math import log10, exp, sqrt, floor
 from sklearn.datasets import make_blobs
 from sklearn.preprocessing import minmax_scale
 from scipy.stats import kurtosis, skew
-from matplotlib import pyplot as plt
+# from matplotlib import pyplot as plt
 
 from skopt import gp_minimize
 from skopt.space import Real
