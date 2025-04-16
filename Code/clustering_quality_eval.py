@@ -99,16 +99,12 @@ def computeGroundTruth(estimate_m, data_func, output_filename):
     fsi = fsi.reshape([N, 4])
     np.savetxt(output_filename, fsi, delimiter = ",", fmt="%.5f")
 
-def estimateBaseErrors(datasets, n_centers, estimate_m, estimate_fs):
+def evaluateBase(data_func, estimate_m, path):
     indices = ['B','FS','K','T']
-
+    datasets, n_centers = data_func()
     num_datasets = estimate_m.shape[0]
-
     mean_mape = np.zeros([30, 4])
-    mean_rrmse = np.zeros([30, 4])
-
     median_mape = np.zeros([30, 4])
-    median_rrmse = np.zeros([30, 4])
 
     for r in range(30):#Experiment
         print(f"Trial: {r}")
@@ -117,11 +113,8 @@ def estimateBaseErrors(datasets, n_centers, estimate_m, estimate_fs):
         np.random.shuffle(idx)
 
         for j in range(4):#Indices
-            mean_mape_error = []
-            mean_rrmse_error = []
-
-            median_mape_error = []
-            median_rrmse_error = []
+            mean_base = []
+            median_base = []
 
             begin = 0
             end = num_datasets // 10
@@ -139,36 +132,29 @@ def estimateBaseErrors(datasets, n_centers, estimate_m, estimate_fs):
                 m_mean = m_train.mean()
                 m_median = m_train.median()
 
-                xb_test = estimate_fs[indices[j]].iloc[idx_test]
-
                 # fcm_func = lambda idx, m : fuzzyCMeans(data=datasets[idx], c=n_centers[idx], seed = 123, m=m)[:2]
                 # xb_func = lambda idx, m : XieBeniIndex(datasets[idx], *fcm_func(idx, m), m)
 
                 fcm_func = lambda idx, m : fuzzyCMeans(data=datasets[idx], c=n_centers[idx], seed = 123, m=m)[0]
-                xb_func = lambda idx, m : fuzzy_silhouette(datasets[idx], fcm_func(idx, m))
+                fs_func = lambda idx, m : fuzzy_silhouette(datasets[idx], fcm_func(idx, m))
 
-                xb_mean_func = lambda idx : xb_func(idx, m_mean)
-                xb_median_func = lambda idx : xb_func(idx, m_median)
+                fs_mean_func = lambda idx : fs_func(idx, m_mean)
+                fs_median_func = lambda idx : fs_func(idx, m_median)
 
-                xb_mean = list(map(xb_mean_func, idx_test))
-                xb_median = list(map(xb_median_func, idx_test))
+                fs_mean = np.mean(list(map(fs_mean_func, idx_test)))
+                fs_median = np.mean(list(map(fs_median_func, idx_test)))
 
-                mean_mape_error.append(computeMAPE(xb_test, xb_mean))
-                mean_rrmse_error.append(computeRRMSE(xb_test, xb_mean))
-
-                median_mape_error.append(computeMAPE(xb_test, xb_median))
-                median_rrmse_error.append(computeRRMSE(xb_test, xb_median))
+                mean_base.append(fs_mean)
+                median_base.append(fs_median)
 
                 begin = end
                 end += num_datasets // 10
 
-            mean_mape[r, j] = np.array(mean_mape_error).mean()
-            mean_rrmse[r, j] = np.array(mean_rrmse_error).mean()
-
-            median_mape[r, j] = np.array(median_mape_error).mean()
-            median_rrmse[r, j] = np.array(median_rrmse_error).mean()
+            mean_mape[r, j] = np.mean(mean_base)
+            median_mape[r, j] = np.mean(median_base)
     
-    return mean_mape, mean_rrmse, median_mape, median_rrmse
+    np.savetxt(f"{path}/base_mean_fuzzy_silhouette.csv", mean_mape, delimiter = ",", fmt="%.10f")
+    np.savetxt(f"{path}/base_median_fuzzy_silhouette.csv", median_mape, delimiter = ",", fmt="%.10f")
 
 def estimateErrors(data_func, estimate_m, estimate_fs, models, metadatasets, path):
     indices = ['B','FS','K','T']
@@ -233,18 +219,38 @@ def estimateErrors(data_func, estimate_m, estimate_fs, models, metadatasets, pat
     np.savetxt(f"{path}/rrmse_error.csv", rrmse, delimiter = ",", fmt="%.10f")
  
 
-def computeErrorBaselines(estimate_m, estimate_fs, data_func, path):
+# def computeErrorBaselines(estimate_m, estimate_fs, data_func, path):
 
-    datasets, n_centers = data_func()    
+#     datasets, n_centers = data_func()    
 
-    mean_mape, mean_rrmse, median_mape, median_rrmse = estimateBaseErrors(datasets, n_centers, estimate_m, estimate_fs)    
+#     mean_mape, mean_rrmse, median_mape, median_rrmse = estimateBaseErrors(datasets, n_centers, estimate_m, estimate_fs)    
 
-    # np.savetxt("../Data/Synthetic/Clustering_Quality/Baselines/BruteForce/average_mape_error.csv", mean_mape, delimiter = ",", fmt="%.10f")
-    np.savetxt(f"{path}/average_mape_error.csv", mean_mape, delimiter = ",", fmt="%.10f")
-    np.savetxt(f"{path}/median_mape_error.csv", median_mape, delimiter = ",", fmt="%.10f")
+#     # np.savetxt("../Data/Synthetic/Clustering_Quality/Baselines/BruteForce/average_mape_error.csv", mean_mape, delimiter = ",", fmt="%.10f")
+#     np.savetxt(f"{path}/average_mape_error.csv", mean_mape, delimiter = ",", fmt="%.10f")
+#     np.savetxt(f"{path}/median_mape_error.csv", median_mape, delimiter = ",", fmt="%.10f")
 
-    np.savetxt(f"{path}/average_rrmse_error.csv", mean_rrmse, delimiter = ",", fmt="%.10f")
-    np.savetxt(f"{path}/median_rrmse_error.csv", median_rrmse, delimiter = ",", fmt="%.10f")
+#     np.savetxt(f"{path}/average_rrmse_error.csv", mean_rrmse, delimiter = ",", fmt="%.10f")
+#     np.savetxt(f"{path}/median_rrmse_error.csv", median_rrmse, delimiter = ",", fmt="%.10f")
+
+def getRealParamsMtL():
+    data_func = getRealData
+    estimate_m = pd.read_csv("../Data/Real/Metadatasets/estimate_m_real.csv")
+    estimate_fs = pd.read_csv("../Data/Real/Clustering_Quality/fs_real_ground_truth.csv")
+    metadatasets = pd.read_csv("../Data/Real/Metadatasets/mf_distances_real.csv", header=None)
+    path = "../Data/Real/Clustering_Quality/MtL"
+
+    models = {'mape': {}, 'rrmse': {}}
+    models['mape']['B'] = KNeighborsRegressor(n_neighbors = 10, weights = 'distance')
+    models['mape']['FS'] = SVR(kernel = "rbf", C = 0.1, gamma = 10)
+    models['mape']['K'] = KNeighborsRegressor(n_neighbors = 8, weights = 'distance')
+    models['mape']['T'] = KNeighborsRegressor(n_neighbors = 9, weights = 'distance')
+
+    models['rrmse']['B'] = KNeighborsRegressor(n_neighbors = 8, weights = 'distance')
+    models['rrmse']['FS'] = SVR(kernel = "rbf", C = 1, gamma = 100)
+    models['rrmse']['K'] = SVR(kernel = "rbf", C = 10, gamma = 0.1)
+    models['rrmse']['T'] = SVR(kernel = "rbf", C = 10, gamma = 0.1)
+
+    return data_func, estimate_m, estimate_fs, models, metadatasets, path
 
 def getRealParamsMtL():
     data_func = getRealData
@@ -290,6 +296,18 @@ def getSyntheticParamsMtL():
 
     return data_func, estimate_m, estimate_fs, models, metadatasets, path
 
+def getSyntheticParamsBase():
+    data_func = getSyntheticData
+    estimate_m = pd.read_csv("../Data/Synthetic/Metadatasets/estimate_m_simulated.csv")
+    path = "../Data/Synthetic/Clustering_Quality/Baselines/BruteForce"
+    return data_func, estimate_m, path
+
+def getRealParamsBase():
+    data_func = getRealData
+    estimate_m = pd.read_csv("../Data/Real/Metadatasets/estimate_m_real.csv")
+    path = "../Data/Real/Clustering_Quality/Baselines/BruteForce"
+    return data_func, estimate_m, path
+
 #DATA
 # estimate_real_m = pd.read_csv("../Data/Real/Metadatasets/estimate_m_real.csv")
 # estimate_syn_m = pd.read_csv("../Data/Synthetic/Metadatasets/estimate_m_simulated.csv")
@@ -301,4 +319,7 @@ def getSyntheticParamsMtL():
 # path = "../Data/Synthetic/Clustering_Quality/Baselines/BruteForce"
 # computeErrorBaselines(estimate_syn_m, estimate_syn_fs, getSyntheticData, path)
 
-estimateErrors(*getSyntheticParamsMtL())
+evaluateBase(*getSyntheticParamsBase())
+
+evaluateBase(*getRealParamsBase())
+
