@@ -258,7 +258,11 @@ def getRealParamsMtL():
 def getRealParamsMtL():
     data_func = getRealData
     estimate_m = pd.read_csv("../Data/Real/Metadatasets/estimate_m_real.csv")
-    metadatasets = pd.read_csv("../Data/Real/Metadatasets/mf_distances_real.csv", header=None)
+    metadatasets = {}
+    metadatasets['B'] = pd.read_csv("../Data/Real/Metadatasets/mf_distances_real.csv", header=None)
+    metadatasets['FS'] = metadatasets['B']
+    metadatasets['K'] = metadatasets['B']
+    metadatasets['T'] = metadatasets['B']
     path = "../Data/Real/Clustering_Quality/MtL"
 
     models = {'mape': {}, 'rrmse': {}}
@@ -277,7 +281,6 @@ def getRealParamsMtL():
 def getSyntheticParamsMtL():
     data_func = getSyntheticData
     estimate_m = pd.read_csv("../Data/Synthetic/Metadatasets/estimate_m_simulated.csv")
-    estimate_fs = pd.read_csv("../Data/Synthetic/Clustering_Quality/fs_simulated_ground_truth.csv")
     metadatasets = {}
     metadatasets['B'] = pd.read_csv("../Data/Synthetic/Metadatasets/mf_dist_corr_simulated.csv", header=None)
     metadatasets['FS'] = pd.read_csv("../Data/Synthetic/Metadatasets/mf_distances_simulated.csv", header=None)
@@ -312,11 +315,11 @@ def getRealParamsBase():
 
 #DATA
 
-# evaluateBase(*getSyntheticParamsBase())
-
-# evaluateBase(*getRealParamsBase())
-
-evaluateMtL(*getSyntheticParamsMtL())
+# evaluateMtL(*getSyntheticParamsMtL())
 
 evaluateMtL(*getRealParamsMtL())
+
+evaluateBase(*getSyntheticParamsBase())
+
+evaluateBase(*getRealParamsBase())
 
