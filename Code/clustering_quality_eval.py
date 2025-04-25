@@ -156,12 +156,15 @@ def evaluateBase(data_func, estimate_m, path):
     np.savetxt(f"{path}/base_mean_fuzzy_silhouette.csv", mean_mape, delimiter = ",", fmt="%.10f")
     np.savetxt(f"{path}/base_median_fuzzy_silhouette.csv", median_mape, delimiter = ",", fmt="%.10f")
 
-def estimateErrors(data_func, estimate_m, estimate_fs, models, metadatasets, path):
+def evaluateMtL(data_func, estimate_m, models, metadatasets, path):
     indices = ['B','FS','K','T']
     datasets, n_centers = data_func()
     num_datasets = estimate_m.shape[0]
     mape = np.zeros([30, 4])
     rrmse = np.zeros([30, 4])
+
+    np.savetxt(f"{path}/mtl_mape_fuzzy_silhouette.csv", mape, delimiter = ",", fmt="%.10f")
+    np.savetxt(f"{path}/mtl_rrmse_fuzzy_silhouette.csv", rrmse, delimiter = ",", fmt="%.10f")
 
     for r in range(30):#Experiment
         print(f"Trial: {r}")
@@ -171,8 +174,8 @@ def estimateErrors(data_func, estimate_m, estimate_fs, models, metadatasets, pat
 
         for j in range(4):
             val_id = indices[j]
-            mape_error = []
-            rrmse_error = []
+            mtl_mape = []
+            mtl_rrmse = []
 
             begin = 0
             end = num_datasets // 10
@@ -185,38 +188,39 @@ def estimateErrors(data_func, estimate_m, estimate_fs, models, metadatasets, pat
                     idx_train = idx[0:begin]
                     idx_test = idx[begin:]
 
-                test_size = len(idx_test)
-
                 X_train = metadatasets[val_id].iloc[idx_train]
                 X_test = metadatasets[val_id].iloc[idx_test]
                 m_train = estimate_m[val_id].iloc[idx_train]                
-                fs_test = estimate_fs[val_id].iloc[idx_test]
 
                 models['mape'][val_id].fit(X_train, m_train)
                 models['rrmse'][val_id].fit(X_train, m_train)
                 m_pred_mape = models['mape'][val_id].predict(X_test)
                 m_pred_rrmse = models['rrmse'][val_id].predict(X_test)
 
-                fcm_func = lambda i, m : fuzzyCMeans(data=datasets[idx_test[i]], c=n_centers[idx_test[i]], seed = 123, m=m)[0]
-                fs_func = lambda i, m : fuzzy_silhouette(datasets[idx_test[i]], fcm_func(i, m))
+                # fcm_func = lambda i, m : fuzzyCMeans(data=datasets[idx_test[i]], c=n_centers[idx_test[i]], seed = 123, m=m)[0]
+                # fs_func = lambda i, m : fuzzy_silhouette(datasets[idx_test[i]], fcm_func(i, m))
 
-                fs_mape = lambda i : fs_func(i, m_pred_mape[i])
-                fs_rrmse = lambda i : fs_func(i, m_pred_rrmse[i])
+                fcm_func = lambda idx, m : fuzzyCMeans(data=datasets[idx], c=n_centers[idx], seed = 123, m=m)[0]
+                fs_func = lambda idx, m : fuzzy_silhouette(datasets[idx], fcm_func(idx, m))
 
-                fs_pred_mape = list(map(fs_mape, range(test_size)))
-                fs_pred_rrmse = list(map(fs_rrmse, range(test_size)))
+                fs_mape_func = lambda i : fs_func(idx_test[i], m_pred_mape[i])
+                fs_rrmse_func = lambda i : fs_func(idx_test[i], m_pred_rrmse[i])
+                
+                x = np.arange(len(idx_test))
+                fs_mape = np.mean(list(map(fs_mape_func, x)))
+                fs_rrmse = np.mean(list(map(fs_rrmse_func, x)))
 
-                mape_error.append(computeMAPE(fs_test, fs_pred_mape))
-                rrmse_error.append(computeRRMSE(fs_test, fs_pred_rrmse))
+                mtl_mape.append(fs_mape)
+                mtl_rrmse.append(fs_rrmse)
 
                 begin = end
                 end += num_datasets // 10
 
-            mape[r, j] = np.array(mape_error).mean()
-            rrmse[r, j] = np.array(rrmse_error).mean()
+            mape[r, j] = np.mean(mtl_mape)
+            rrmse[r, j] = np.mean(mtl_rrmse)
     
-    np.savetxt(f"{path}/mape_error.csv", mape, delimiter = ",", fmt="%.10f")
-    np.savetxt(f"{path}/rrmse_error.csv", rrmse, delimiter = ",", fmt="%.10f")
+    np.savetxt(f"{path}/mtl_mape_fuzzy_silhouette.csv", mape, delimiter = ",", fmt="%.10f")
+    np.savetxt(f"{path}/mtl_rrmse_fuzzy_silhouette.csv", rrmse, delimiter = ",", fmt="%.10f")
  
 
 # def computeErrorBaselines(estimate_m, estimate_fs, data_func, path):
@@ -235,7 +239,6 @@ def estimateErrors(data_func, estimate_m, estimate_fs, models, metadatasets, pat
 def getRealParamsMtL():
     data_func = getRealData
     estimate_m = pd.read_csv("../Data/Real/Metadatasets/estimate_m_real.csv")
-    estimate_fs = pd.read_csv("../Data/Real/Clustering_Quality/fs_real_ground_truth.csv")
     metadatasets = pd.read_csv("../Data/Real/Metadatasets/mf_distances_real.csv", header=None)
     path = "../Data/Real/Clustering_Quality/MtL"
 
@@ -250,12 +253,11 @@ def getRealParamsMtL():
     models['rrmse']['K'] = SVR(kernel = "rbf", C = 10, gamma = 0.1)
     models['rrmse']['T'] = SVR(kernel = "rbf", C = 10, gamma = 0.1)
 
-    return data_func, estimate_m, estimate_fs, models, metadatasets, path
+    return data_func, estimate_m, models, metadatasets, path
 
 def getRealParamsMtL():
     data_func = getRealData
     estimate_m = pd.read_csv("../Data/Real/Metadatasets/estimate_m_real.csv")
-    estimate_fs = pd.read_csv("../Data/Real/Clustering_Quality/fs_real_ground_truth.csv")
     metadatasets = pd.read_csv("../Data/Real/Metadatasets/mf_distances_real.csv", header=None)
     path = "../Data/Real/Clustering_Quality/MtL"
 
@@ -270,7 +272,7 @@ def getRealParamsMtL():
     models['rrmse']['K'] = SVR(kernel = "rbf", C = 10, gamma = 0.1)
     models['rrmse']['T'] = SVR(kernel = "rbf", C = 10, gamma = 0.1)
 
-    return data_func, estimate_m, estimate_fs, models, metadatasets, path
+    return data_func, estimate_m, models, metadatasets, path
 
 def getSyntheticParamsMtL():
     data_func = getSyntheticData
@@ -294,7 +296,7 @@ def getSyntheticParamsMtL():
     models['rrmse']['K'] = SVR(kernel = "rbf", C = 10, gamma = 1)
     models['rrmse']['T'] = SVR(kernel = "rbf", C = 10, gamma = 0.1)
 
-    return data_func, estimate_m, estimate_fs, models, metadatasets, path
+    return data_func, estimate_m, models, metadatasets, path
 
 def getSyntheticParamsBase():
     data_func = getSyntheticData
@@ -309,17 +311,12 @@ def getRealParamsBase():
     return data_func, estimate_m, path
 
 #DATA
-# estimate_real_m = pd.read_csv("../Data/Real/Metadatasets/estimate_m_real.csv")
-# estimate_syn_m = pd.read_csv("../Data/Synthetic/Metadatasets/estimate_m_simulated.csv")
 
-# estimate_syn_fs = pd.read_csv("../Data/Synthetic/Clustering_Quality/fs_simulated_ground_truth.csv")
+# evaluateBase(*getSyntheticParamsBase())
 
+# evaluateBase(*getRealParamsBase())
 
-# # computeGroundTruth(estimate_syn_m, getSyntheticData, "fs_simulated_ground_truth.csv")
-# path = "../Data/Synthetic/Clustering_Quality/Baselines/BruteForce"
-# computeErrorBaselines(estimate_syn_m, estimate_syn_fs, getSyntheticData, path)
+evaluateMtL(*getSyntheticParamsMtL())
 
-evaluateBase(*getSyntheticParamsBase())
-
-evaluateBase(*getRealParamsBase())
+evaluateMtL(*getRealParamsMtL())
 
