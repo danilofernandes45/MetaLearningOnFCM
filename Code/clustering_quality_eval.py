@@ -315,11 +315,11 @@ def getRealParamsBase():
 
 #DATA
 
+# evaluateBase(*getSyntheticParamsBase())
+
+# evaluateBase(*getRealParamsBase())
+
 # evaluateMtL(*getSyntheticParamsMtL())
 
 evaluateMtL(*getRealParamsMtL())
-
-evaluateBase(*getSyntheticParamsBase())
-
-evaluateBase(*getRealParamsBase())
 
