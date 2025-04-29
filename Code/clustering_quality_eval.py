@@ -221,20 +221,132 @@ def evaluateMtL(data_func, estimate_m, models, metadatasets, path):
     
     np.savetxt(f"{path}/mtl_mape_fuzzy_silhouette.csv", mape, delimiter = ",", fmt="%.10f")
     np.savetxt(f"{path}/mtl_rrmse_fuzzy_silhouette.csv", rrmse, delimiter = ",", fmt="%.10f")
- 
 
-# def computeErrorBaselines(estimate_m, estimate_fs, data_func, path):
+def evaluateBaseAll(data_func, estimate_m, path):
+    indices = ['B','FS','K','T']
+    datasets, n_centers = data_func()
+    num_datasets = estimate_m.shape[0]
+    mean_mape = np.zeros([30, 1])
+    median_mape = np.zeros([30, 1])
 
-#     datasets, n_centers = data_func()    
+    for r in range(30):#Experiment
+        print(f"Trial: {r}")
+        idx = np.arange(0, num_datasets, 1)
+        np.random.seed(r)
+        np.random.shuffle(idx)
 
-#     mean_mape, mean_rrmse, median_mape, median_rrmse = estimateBaseErrors(datasets, n_centers, estimate_m, estimate_fs)    
+        mean_base = []
+        median_base = []
 
-#     # np.savetxt("../Data/Synthetic/Clustering_Quality/Baselines/BruteForce/average_mape_error.csv", mean_mape, delimiter = ",", fmt="%.10f")
-#     np.savetxt(f"{path}/average_mape_error.csv", mean_mape, delimiter = ",", fmt="%.10f")
-#     np.savetxt(f"{path}/median_mape_error.csv", median_mape, delimiter = ",", fmt="%.10f")
+        begin = 0
+        end = num_datasets // 10
 
-#     np.savetxt(f"{path}/average_rrmse_error.csv", mean_rrmse, delimiter = ",", fmt="%.10f")
-#     np.savetxt(f"{path}/median_rrmse_error.csv", median_rrmse, delimiter = ",", fmt="%.10f")
+        for l in range(10):#10-Fold CrossValidation
+            if(l < 9):
+                idx_train = np.append(idx[0:begin], idx[end:])
+                idx_test = idx[begin: end]
+            else:
+                idx_train = idx[0:begin]
+                idx_test = idx[begin:]
+
+            m_mean = []
+            m_median = []
+            for j in range(4):#Indices
+                m_train = estimate_m[indices[j]].iloc[idx_train]
+                m_mean.append(m_train.mean())
+                m_median.append(m_train.median())
+
+            m_mean = np.median(m_mean)
+            m_median = np.median(m_median)
+
+            fcm_func = lambda idx, m : fuzzyCMeans(data=datasets[idx], c=n_centers[idx], seed = 123, m=m)[0]
+            fs_func = lambda idx, m : fuzzy_silhouette(datasets[idx], fcm_func(idx, m))
+
+            fs_mean_func = lambda idx : fs_func(idx, m_mean)
+            fs_median_func = lambda idx : fs_func(idx, m_median)
+
+            fs_mean = np.mean(list(map(fs_mean_func, idx_test)))
+            fs_median = np.mean(list(map(fs_median_func, idx_test)))
+
+            mean_base.append(fs_mean)
+            median_base.append(fs_median)
+
+            begin = end
+            end += num_datasets // 10
+
+        mean_mape[r, 0] = np.mean(mean_base)
+        median_mape[r, 0] = np.mean(median_base)
+    
+    np.savetxt(f"{path}/base_mean_fuzzy_silhouette_median.csv", mean_mape, delimiter = ",", fmt="%.10f")
+    np.savetxt(f"{path}/base_median_fuzzy_silhouette_median.csv", median_mape, delimiter = ",", fmt="%.10f")
+
+def evaluateMtLAll(data_func, estimate_m, models, metadatasets, path):
+    indices = ['B','FS','K','T']
+    datasets, n_centers = data_func()
+    num_datasets = estimate_m.shape[0]
+    mape = np.zeros([30, 1])
+    rrmse = np.zeros([30, 1])
+
+    np.savetxt(f"{path}/mtl_mape_fuzzy_silhouette.csv", mape, delimiter = ",", fmt="%.10f")
+    np.savetxt(f"{path}/mtl_rrmse_fuzzy_silhouette.csv", rrmse, delimiter = ",", fmt="%.10f")
+
+    for r in range(30):#Experiment
+        print(f"Trial: {r}")
+        idx = np.arange(0, num_datasets, 1)
+        np.random.seed(r)
+        np.random.shuffle(idx)
+
+        mtl_mape = []
+        mtl_rrmse = []
+
+        begin = 0
+        end = num_datasets // 10
+
+        for l in range(10):#10-Fold CrossValidation
+            if(l < 9):
+                idx_train = np.append(idx[0:begin], idx[end:])
+                idx_test = idx[begin: end]
+            else:
+                idx_train = idx[0:begin]
+                idx_test = idx[begin:]
+
+            m_pred_mape = []
+            m_pred_rrmse = []
+            for j in range(4):
+                val_id = indices[j]
+                X_train = metadatasets[val_id].iloc[idx_train]
+                X_test = metadatasets[val_id].iloc[idx_test]
+                m_train = estimate_m[val_id].iloc[idx_train]                
+
+                models['mape'][val_id].fit(X_train, m_train)
+                models['rrmse'][val_id].fit(X_train, m_train)
+                m_pred_mape.append(models['mape'][val_id].predict(X_test))
+                m_pred_rrmse.append(models['rrmse'][val_id].predict(X_test))
+            
+            m_pred_mape = np.median(np.array(m_pred_mape), axis = 0)
+            m_pred_rrmse = np.median(np.array(m_pred_rrmse), axis = 0)
+
+            fcm_func = lambda idx, m : fuzzyCMeans(data=datasets[idx], c=n_centers[idx], seed = 123, m=m)[0]
+            fs_func = lambda idx, m : fuzzy_silhouette(datasets[idx], fcm_func(idx, m))
+
+            fs_mape_func = lambda i : fs_func(idx_test[i], m_pred_mape[i])
+            fs_rrmse_func = lambda i : fs_func(idx_test[i], m_pred_rrmse[i])
+            
+            x = np.arange(len(idx_test))
+            fs_mape = np.mean(list(map(fs_mape_func, x)))
+            fs_rrmse = np.mean(list(map(fs_rrmse_func, x)))
+
+            mtl_mape.append(fs_mape)
+            mtl_rrmse.append(fs_rrmse)
+
+            begin = end
+            end += num_datasets // 10
+
+        mape[r, 0] = np.mean(mtl_mape)
+        rrmse[r, 0] = np.mean(mtl_rrmse)
+    
+    np.savetxt(f"{path}/mtl_mape_fuzzy_silhouette_median.csv", mape, delimiter = ",", fmt="%.10f")
+    np.savetxt(f"{path}/mtl_rrmse_fuzzy_silhouette_median.csv", rrmse, delimiter = ",", fmt="%.10f")
 
 def getRealParamsMtL():
     data_func = getRealData
@@ -315,11 +427,11 @@ def getRealParamsBase():
 
 #DATA
 
-# evaluateMtL(*getSyntheticParamsMtL())
+evaluateMtLAll(*getSyntheticParamsMtL())
 
-evaluateMtL(*getRealParamsMtL())
+evaluateMtLAll(*getRealParamsMtL())
 
-evaluateBase(*getSyntheticParamsBase())
+evaluateBaseAll(*getSyntheticParamsBase())
 
-evaluateBase(*getRealParamsBase())
+evaluateBaseAll(*getRealParamsBase())
 
